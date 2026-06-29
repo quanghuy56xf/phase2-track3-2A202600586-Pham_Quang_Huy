@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Day 08 Lab — Trình bày</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; }
+
+    .deck { height: 100vh; position: relative; }
+    .slide {
+      position: absolute; inset: 0; display: none; flex-direction: column;
+      padding: 40px 56px 72px; background: #f8fafc;
+    }
+    .slide.active { display: flex; }
+
+    /* ── Title / End slides ── */
+    .slide.hero {
+      background: linear-gradient(160deg, #0284c7 0%, #4f46e5 60%, #7c3aed 100%);
+      color: #fff; justify-content: center; align-items: center; text-align: center;
+    }
+    .slide.hero .icon-big { font-size: 4rem; margin-bottom: 16px; }
+    .slide.hero h1 { font-size: 2.6rem; font-weight: 800; letter-spacing: -.02em; }
+    .slide.hero .tagline { font-size: 1.2rem; opacity: .92; margin-top: 14px; max-width: 640px; line-height: 1.55; }
+    .slide.hero .author { margin-top: 40px; font-size: 1rem; opacity: .8; }
+
+    /* ── Normal slides ── */
+    .slide-head { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
+    .slide-head .num {
+      width: 40px; height: 40px; border-radius: 10px; background: #0284c7; color: #fff;
+      display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem;
+    }
+    .slide-head h2 { font-size: 1.65rem; color: #0f172a; font-weight: 700; }
+
+    .body { flex: 1; display: flex; align-items: center; justify-content: center; }
+
+    /* ── Cards ── */
+    .cards { display: flex; gap: 20px; width: 100%; }
+    .card {
+      flex: 1; background: #fff; border-radius: 16px; padding: 24px 20px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.06); text-align: center;
+      border-top: 5px solid #0284c7;
+    }
+    .card .emoji { font-size: 2.2rem; margin-bottom: 10px; }
+    .card h3 { font-size: 1rem; color: #0f172a; margin-bottom: 8px; }
+    .card p { font-size: .85rem; color: #64748b; line-height: 1.45; }
+
+    /* ── Route pills ── */
+    .routes { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; width: 100%; }
+    .route-pill {
+      width: 170px; border-radius: 16px; padding: 18px 14px; text-align: center;
+      color: #fff; box-shadow: 0 6px 20px rgba(0,0,0,.12);
+    }
+    .route-pill .ico { font-size: 2rem; }
+    .route-pill .name { font-weight: 700; font-size: .95rem; margin: 8px 0 4px; }
+    .route-pill .ex { font-size: .72rem; opacity: .88; line-height: 1.35; }
+    .r-simple { background: linear-gradient(135deg,#22c55e,#16a34a); }
+    .r-tool   { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+    .r-miss   { background: linear-gradient(135deg,#f59e0b,#d97706); }
+    .r-risky  { background: linear-gradient(135deg,#ef4444,#dc2626); }
+    .r-error  { background: linear-gradient(135deg,#a855f7,#7c3aed); }
+
+    /* ── Flow diagram ── */
+    .flow-wrap { width: 100%; max-width: 960px; }
+    .flow-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+    .fbox {
+      padding: 10px 18px; border-radius: 10px; font-size: .82rem; font-weight: 600;
+      white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+    .f-start  { background: #0f172a; color: #fff; }
+    .f-node   { background: #fff; color: #334155; border: 2px solid #e2e8f0; }
+    .f-llm    { background: #dbeafe; color: #1d4ed8; border: 2px solid #93c5fd; }
+    .f-end    { background: #0f172a; color: #fff; }
+    .f-arrow  { color: #94a3b8; font-size: 1.3rem; font-weight: 300; }
+
+    .branches { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; margin-top: 16px; }
+    .branch {
+      border-radius: 12px; padding: 12px 8px; text-align: center; font-size: .72rem;
+      color: #fff; line-height: 1.4;
+    }
+    .branch b { display: block; font-size: .78rem; margin-bottom: 4px; }
+    .b1 { background: #22c55e; } .b2 { background: #3b82f6; } .b3 { background: #f59e0b; }
+    .b4 { background: #ef4444; } .b5 { background: #a855f7; }
+
+    /* ── Scenario timeline ── */
+    .timeline { width: 100%; max-width: 900px; }
+    .tl-item {
+      display: flex; align-items: stretch; gap: 16px; margin-bottom: 14px;
+    }
+    .tl-badge {
+      width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; color: #fff;
+    }
+    .tl-body {
+      flex: 1; background: #fff; border-radius: 14px; padding: 14px 18px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.05); display: flex; align-items: center; gap: 16px;
+    }
+    .tl-q { flex: 1; font-size: .88rem; color: #334155; }
+    .tl-flow { font-size: .78rem; color: #64748b; white-space: nowrap; }
+    .tl-tag { padding: 3px 10px; border-radius: 999px; font-size: .7rem; font-weight: 700; color: #fff; }
+
+    /* ── Two-panel ── */
+    .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; width: 100%; }
+    .panel {
+      background: #fff; border-radius: 16px; padding: 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.06);
+    }
+    .panel h3 { font-size: 1rem; color: #0284c7; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .step { display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start; }
+    .step-n {
+      width: 28px; height: 28px; border-radius: 50%; background: #e0f2fe; color: #0284c7;
+      font-size: .78rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .step p { font-size: .85rem; color: #475569; line-height: 1.45; }
+
+    /* ── Stats ── */
+    .big-stats { display: flex; gap: 20px; width: 100%; justify-content: center; }
+    .bstat {
+      width: 180px; background: #fff; border-radius: 20px; padding: 28px 16px; text-align: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,.07);
+    }
+    .bstat .val { font-size: 2.8rem; font-weight: 800; color: #0284c7; line-height: 1; }
+    .bstat .lbl { font-size: .82rem; color: #64748b; margin-top: 8px; }
+
+    .demo-row { display: flex; gap: 16px; margin-top: 28px; justify-content: center; flex-wrap: wrap; }
+    .demo-chip {
+      background: #fff; border-radius: 12px; padding: 12px 20px; font-size: .85rem; color: #334155;
+      box-shadow: 0 2px 10px rgba(0,0,0,.05); display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ── Classify visual ── */
+    .classify-vis { display: flex; align-items: center; gap: 24px; width: 100%; max-width: 920px; }
+    .input-box {
+      background: #fff; border-radius: 16px; padding: 24px; flex: 1;
+      box-shadow: 0 4px 20px rgba(0,0,0,.06); border-left: 5px solid #0284c7;
+    }
+    .input-box .label { font-size: .72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; }
+    .input-box .query { font-size: 1.05rem; color: #0f172a; margin-top: 8px; font-style: italic; }
+    .brain {
+      width: 100px; height: 100px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg,#0284c7,#6366f1);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: #fff; font-size: .72rem; font-weight: 600; box-shadow: 0 8px 30px rgba(2,132,199,.35);
+    }
+    .brain span { font-size: 2rem; }
+    .output-box {
+      background: #dcfce7; border-radius: 16px; padding: 20px 28px; text-align: center;
+      border: 2px solid #86efac;
+    }
+    .output-box .route-out { font-size: 1.4rem; font-weight: 800; color: #166534; }
+    .output-box .route-lbl { font-size: .75rem; color: #15803d; margin-top: 4px; }
+
+    /* ── Footer nav ── */
+    .bar {
+      position: fixed; bottom: 0; left: 0; right: 0; height: 52px;
+      background: rgba(255,255,255,.95); backdrop-filter: blur(8px);
+      border-top: 1px solid #e2e8f0; display: flex; align-items: center;
+      justify-content: space-between; padding: 0 28px; font-size: .82rem; color: #64748b; z-index: 10;
+    }
+    .bar button {
+      background: #0284c7; color: #fff; border: none; padding: 7px 18px;
+      border-radius: 8px; cursor: pointer; font-size: .85rem; margin-left: 6px;
+    }
+    .bar button:disabled { background: #cbd5e1; cursor: default; }
+    .prog { position: fixed; top: 0; left: 0; right: 0; height: 4px; background: #e2e8f0; z-index: 11; }
+    .prog-fill { height: 100%; background: linear-gradient(90deg,#0284c7,#6366f1); transition: width .25s; }
+
+    .priority-bar {
+      display: flex; border-radius: 10px; overflow: hidden; height: 36px; width: 100%; max-width: 700px; margin: 16px auto 0;
+      font-size: .68rem; font-weight: 700; color: #fff;
+    }
+    .priority-bar div { flex: 1; display: flex; align-items: center; justify-content: center; }
+
+    /* ── Optimize slide ── */
+    .opt-steps { display: flex; gap: 14px; width: 100%; margin-bottom: 20px; }
+    .opt-step {
+      flex: 1; background: #fff; border-radius: 14px; padding: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.05); border-top: 4px solid #0284c7;
+    }
+    .opt-step .sn { font-size: .7rem; font-weight: 700; color: #0284c7; text-transform: uppercase; letter-spacing: .05em; }
+    .opt-step h4 { font-size: .92rem; color: #0f172a; margin: 6px 0; }
+    .opt-step p { font-size: .78rem; color: #64748b; line-height: 1.4; }
+    .compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; width: 100%; max-width: 880px; }
+    .cmp-box { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 2px 12px rgba(0,0,0,.05); }
+    .cmp-box.bad { border: 2px solid #fca5a5; }
+    .cmp-box.good { border: 2px solid #86efac; }
+    .cmp-label { font-size: .72rem; font-weight: 700; margin-bottom: 8px; }
+    .cmp-label.bad { color: #dc2626; }
+    .cmp-label.good { color: #16a34a; }
+    .cmp-q { font-size: .88rem; color: #334155; font-style: italic; margin-bottom: 8px; }
+    .cmp-r { font-size: .82rem; font-weight: 700; }
+    .cmp-arrow { font-size: 1.8rem; color: #94a3b8; }
+    .opt-list { width: 100%; max-width: 900px; }
+    .opt-list li { font-size: .82rem; color: #475569; padding: 6px 0 6px 20px; position: relative; list-style: none; }
+    .opt-list li::before { content: "✓"; position: absolute; left: 0; color: #16a34a; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<div class="prog"><div class="prog-fill" id="prog"></div></div>
+<div class="deck">
+
+  <!-- 1 · TITLE -->
+  <section class="slide hero active">
+    <div class="icon-big">🎫</div>
+    <h1>Support Ticket Agent</h1>
+    <p class="tagline">Xây dựng AI Agent bằng LangGraph — tự phân loại, xử lý và trả lời ticket hỗ trợ</p>
+    <p class="author">Pham Quang Huy · 2A202600586 · Day 08 Lab</p>
+  </section>
+
+  <!-- 2 · VẤN ĐỀ & GIẢI PHÁP -->
+  <section class="slide">
+    <div class="slide-head"><div class="num">1</div><h2>Bài toán & Giải pháp</h2></div>
+    <div class="body">
+      <div class="cards">
+        <div class="card" style="border-color:#ef4444">
+          <div class="emoji">😕</div>
+          <h3>Vấn đề</h3>
+          <p>Ticket support đa dạng: FAQ, tra cứu, thiếu info, hành động nguy hiểm, lỗi hệ thống — cần xử lý khác nhau</p>
+        </div>
+        <div class="card" style="border-color:#0284c7">
+          <div class="emoji">🤖</div>
+          <h3>Giải pháp</h3>
+          <p>LangGraph Agent: LLM phân loại → route điều kiện → xử lý riêng từng loại → audit + metrics</p>
+        </div>
+        <div class="card" style="border-color:#22c55e">
+          <div class="emoji">✅</div>
+          <h3>Kết quả</h3>
+          <p>7/7 scenario pass · 25/25 test · Demo UI Streamlit · Báo cáo + metrics JSON</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · 5 LOẠI ROUTE -->
+  <section class="slide">
+    <div class="slide-head"><div class="num">2</div><h2>Agent phân loại 5 loại ticket</h2></div>
+    <div class="body" style="flex-direction:column">
+      <div class="routes">
+        <div class="route-pill r-simple"><div class="ico">💬</div><div class="name">Simple</div><div class="ex">FAQ, hướng dẫn<br>"Reset password?"</div></div>
+        <div class="route-pill r-tool"><div class="ico">🔍</div><div class="name">Tool</div><div class="ex">Tra cứu dữ liệu<br>"Order status #123"</div></div>
+        <div class="route-pill r-miss"><div class="ico">❓</div><div class="name">Missing info</div><div class="ex">Câu mơ hồ<br>"Can you fix it?"</div></div>
+        <div class="route-pill r-risky"><div class="ico">⚠️</div><div class="name">Risky</div><div class="ex">Side-effect<br>"Refund / Delete"</div></div>
+        <div class="route-pill r-error"><div class="ico">💥</div><div class="name">Error</div><div class="ex">Lỗi hệ thống<br>"Timeout / Crash"</div></div>
+      </div>
+      <div class="priority-bar">
+        <div style="background:#ef4444">risky</div>
+        <div style="background:#3b82f6">tool</div>
+        <div style="background:#f59e0b">missing</div>
+        <div style="background:#a855f7">error</div>
+        <div style="background:#22c55e">simple</div>
+      </div>
+      <p style="text-align:center;margin-top:10px;font-size:.8rem;color:#64748b">← LLM ưu tiên từ trái sang phải khi câu hỏi thuộc nhiều loại →</p>
+    </div>
+  </section>
+
+  <!-- 4 · PHÂN LOẠI TRỰC QUAN -->
+  <section class="slide">
+    <div class="slide-head"><div class="num">3</div><h2>Phân loại diễn ra như thế nào?</h2></div>
+    <div class="body" style="flex-direction:column;gap:20px">
+      <div class="opt-steps">
+        <div class="opt-step">
+          <div class="sn">Step 1</div>
+          <h4>READ</h4>
+          <p>Đọc query mọi ngôn ngữ (EN, VI...)</p>
+        </div>
+        <div class="opt-step">
+          <div class="sn">Step 2</div>
+          <h4>IDENTIFY</h4>
+          <p>Hiểu chủ đề & ý định user trước khi chọn route</p>
+        </div>
+        <div class="opt-step">
+          <div class="sn">Step 3</div>
+          <h4>CLASSIFY</h4>
+          <p>So khớp 5 route + structured output</p>
+        </div>
+      </div>
+      <div class="classify-vis">
+        <div class="input-box">
+          <div class="label">User gửi ticket</div>
+          <div class="query">"Please lookup order status for order 12345"</div>
+        </div>
+        <div style="font-size:2rem;color:#94a3b8">→</div>
+        <div class="brain"><span>🧠</span>LLM<br>classify</div>
+        <div style="font-size:2rem;color:#94a3b8">→</div>
+        <div class="output-box">
+          <div class="route-out">tool</div>
+          <div class="route-lbl">→ gọi mock tool</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · TỐI ƯU PROMPT -->
+  <section class="slide">
+    <div class="slide-head"><div class="num">4</div><h2>Tối ưu Prompt Engineering</h2></div>
+    <div class="body" style="flex-direction:column;gap:18px">
+      <p style="font-size:.88rem;color:#64748b;text-align:center;max-width:780px">
+        Vấn đề ban đầu: câu ngắn / tiếng Việt dễ bị classify nhầm sang <strong>missing_info</strong>
+      </p>
+      <div class="compare">
+        <div class="cmp-box bad">
+          <div class="cmp-label bad">❌ Trước tối ưu</div>
+          <div class="cmp-q">"cách đổi mật khẩu"</div>
+          <div class="cmp-r" style="color:#d97706">→ missing_info (hỏi lại EN)</div>
+        </div>
+        <div class="cmp-arrow">→</div>
+        <div class="cmp-box good">
+          <div class="cmp-label good">✅ Sau tối ưu</div>
+          <div class="cmp-q">"cách đổi mật khẩu"</div>
+          <div class="cmp-r" style="color:#16a34a">→ simple (trả lời hướng dẫn VI)</div>
+        </div>
+      </div>
+      <ul class="opt-list">
+        <li>Thu hẹp <strong>missing_info</strong> — chỉ khi không có chủ đề ("help", "fix it")</li>
+        <li>Câu how-to ngắn vẫn là <strong>simple</strong> — kể cả không có "như thế nào"</li>
+        <li>Thêm <strong>few-shot</strong> tiếng Anh + tiếng Việt trong prompt</li>
+        <li>Ưu tiên simple/tool khi đã nhận diện được topic</li>
+        <li>Prompt 3 bước READ → IDENTIFY → CLASSIFY (tự thiết kế, không hard-code)</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 6 · KIẾN TRÚC GRAPH -->
+  <section class="slide">
+    <div class="slide-head"><div class="num">5</div><h2>Luồng xử lý LangGraph</h2></div>
+    <div class="body">
+      <div class="flow-wrap">
+        <div class="flow-row">
+          <div class="fbox f-start">START</div><div class="f-arrow">→</div>
+          <div class="fbox f-node">intake</div><div class="f-arrow">→</div>
+          <div class="fbox f-llm">🧠 classify (LLM)</div><div class="f-arrow">→</div>
+          <div class="fbox f-node">routing</div>
+        </div>
+        <div class="branches">
+          <div class="branch b1"><b>simple</b>→ answer → END</div>
+          <div class="branch b2"><b>tool</b>→ tool → evaluate → answer</div>
+          <div class="branch b3"><b>missing</b>→ hỏi lại → END</div>
+          <div class="branch b4"><b>risky</b>→ approval → tool → answer</div>
+          <div class="branch b5"><b>error</b>→ retry loop → dead letter</div>
+        </div>
+        <p style="text-align:center;margin-top:18px;font-size:.82rem;color:#64748b">
+          Mọi nhánh đều qua <strong>finalize</strong> trước khi kết thúc · 11 nodes · 4 conditional edges
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 · SCENARIO DEMO -->
+  <section class="slide">
+    <div class="slide-head"><div class="num">6</div><h2>7 kịch bản test</h2></div>
+    <div class="body">
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-badge r-simple" style="background:#22c55e">💬</div>
+          <div class="tl-body">
+            <div class="tl-q">"How do I reset my password?"</div>
+            <span class="tl-tag r-simple" style="background:#22c55e">simple</span>
+            <div class="tl-flow">LLM trả lời trực tiếp</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-badge" style="background:#3b82f6">🔍</div>
+          <div class="tl-body">
+            <div class="tl-q">"Lookup order status for order 12345"</div>
+            <span class="tl-tag" style="background:#3b82f6">tool</span>
+            <div class="tl-flow">tool → evaluate → answer</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-badge" style="background:#ef4444">⚠️</div>
+          <div class="tl-body">
+            <div class="tl-q">"Refund customer and send email"</div>
+            <span class="tl-tag" style="background:#ef4444">risky</span>
+            <div class="tl-flow">approval (HITL) → tool → answer</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-badge" style="background:#a855f7">💥</div>
+          <div class="tl-body">
+            <div class="tl-q">"System failure cannot recover"</div>
+            <span class="tl-tag" style="background:#a855f7">error</span>
+            <div class="tl-flow">retry hết lượt → dead letter</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 · RETRY & HITL -->
+  <section class="slide">
+    <div class="slide-head"><div class="num">7</div><h2>Retry & Human Approval</h2></div>
+    <div class="body">
+      <div class="panels">
+        <div class="panel">
+          <h3>🔄 Retry Loop (route error)</h3>
+          <div class="step"><div class="step-n">1</div><p>Tool fail lần 1 → ghi ERROR</p></div>
+          <div class="step"><div class="step-n">2</div><p>Evaluate phát hiện → retry (attempt++)</p></div>
+          <div class="step"><div class="step-n">3</div><p>Tool chạy lại → thành công → trả lời</p></div>
+          <div class="step"><div class="step-n">✕</div><p>Hết max_attempts → <strong>dead letter</strong> (escalate)</p></div>
+        </div>
+        <div class="panel">
+          <h3>👤 Human-in-the-Loop (route risky)</h3>
+          <div class="step"><div class="step-n">1</div><p>Phát hiện hành động nguy hiểm (refund, xóa...)</p></div>
+          <div class="step"><div class="step-n">2</div><p>Chuẩn bị proposed_action → gửi approval</p></div>
+          <div class="step"><div class="step-n">3</div><p>Duyệt ✅ → thực thi · Từ chối ❌ → hỏi lại user</p></div>
+          <div class="step"><div class="step-n">🛡</div><p>Đảm bảo không tự ý thực hiện hành động nhạy cảm</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 · KẾT QUẢ -->
+  <section class="slide">
+    <div class="slide-head"><div class="num">8</div><h2>Kết quả đạt được</h2></div>
+    <div class="body" style="flex-direction:column">
+      <div class="big-stats">
+        <div class="bstat"><div class="val">25</div><div class="lbl">Tests passed</div></div>
+        <div class="bstat"><div class="val">100%</div><div class="lbl">Scenario success</div></div>
+        <div class="bstat"><div class="val">15/15</div><div class="lbl">Hard batch test</div></div>
+        <div class="bstat"><div class="val">11</div><div class="lbl">Graph nodes</div></div>
+      </div>
+      <div class="demo-row">
+        <div class="demo-chip">📊 outputs/metrics.json</div>
+        <div class="demo-chip">📝 reports/lab_report.md</div>
+        <div class="demo-chip">🖥 Streamlit UI demo live</div>
+        <div class="demo-chip">💾 SQLite checkpointer</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 · END -->
+  <section class="slide hero">
+    <div class="icon-big">🙏</div>
+    <h1 style="font-size:2.2rem">Cảm ơn thầy/cô!</h1>
+    <p class="tagline">Sẵn sàng demo trực tiếp trên Streamlit UI<br>Nhập câu hỏi bất kỳ → xem agent phân loại & trả lời realtime</p>
+    <p class="author">Pham Quang Huy · Day 08 LangGraph Lab</p>
+  </section>
+
+</div>
+
+<div class="bar">
+  <span id="num">1 / 10</span>
+  <span>← → hoặc Space để chuyển slide</span>
+  <div>
+    <button id="prev" disabled>←</button>
+    <button id="next">→</button>
+  </div>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const n = slides.length;
+  let cur = 0;
+  function go(i) {
+    slides[cur].classList.remove('active');
+    cur = Math.max(0, Math.min(i, n - 1));
+    slides[cur].classList.add('active');
+    document.getElementById('num').textContent = (cur + 1) + ' / ' + n;
+    document.getElementById('prog').style.width = ((cur + 1) / n * 100) + '%';
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === n - 1;
+  }
+  document.getElementById('prev').onclick = () => go(cur - 1);
+  document.getElementById('next').onclick = () => go(cur + 1);
+  document.onkeydown = e => {
+    if (['ArrowRight',' '].includes(e.key)) { e.preventDefault(); go(cur + 1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); go(cur - 1); }
+  };
+</script>
+</body>
+</html>

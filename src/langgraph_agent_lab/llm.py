@@ -12,6 +12,20 @@ Usage in nodes:
 from __future__ import annotations
 
 import os
+from pathlib import Path
+
+
+def _load_dotenv() -> None:
+    """Load .env from project root if present."""
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
 
 
 def get_llm(model: str | None = None, temperature: float = 0.0):
@@ -24,6 +38,8 @@ def get_llm(model: str | None = None, temperature: float = 0.0):
 
     Override model with the `model` parameter or LLM_MODEL env var.
     """
+    _load_dotenv()
+
     if os.getenv("GEMINI_API_KEY"):
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
@@ -40,10 +56,13 @@ def get_llm(model: str | None = None, temperature: float = 0.0):
             from langchain_openai import ChatOpenAI
         except ImportError as exc:
             raise RuntimeError("Install: pip install langchain-openai") from exc
-        return ChatOpenAI(
-            model=model or os.getenv("LLM_MODEL", "gpt-4o-mini"),
-            temperature=temperature,
-        )
+        kwargs: dict = {
+            "model": model or os.getenv("LLM_MODEL", "gpt-4o-mini"),
+            "temperature": temperature,
+        }
+        if base_url := os.getenv("OPENAI_BASE_URL"):
+            kwargs["base_url"] = base_url
+        return ChatOpenAI(**kwargs)
 
     if os.getenv("ANTHROPIC_API_KEY"):
         try:

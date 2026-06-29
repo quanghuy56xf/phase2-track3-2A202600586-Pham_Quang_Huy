@@ -2,9 +2,160 @@
 
 Build a production-style LangGraph workflow for a support-ticket agent with state management, conditional routing, retry loops, human-in-the-loop approval, persistence, and metrics.
 
-This is a **starter skeleton**. All node implementations, routing logic, and graph wiring are left as `TODO(student)` — you must build them from scratch.
+This lab implements a LangGraph support-ticket agent with LLM classification, conditional routing, retry/HITL, metrics, and a Streamlit demo UI.
 
 ---
+
+## Hướng dẫn chạy (Run guide)
+
+### Yêu cầu
+
+- Python **3.11+**
+- API key LLM (OpenAI, Anthropic, Gemini, hoặc **DeepSeek**)
+
+### 1. Clone & cài đặt
+
+**Linux / macOS:**
+
+```bash
+git clone https://github.com/quanghuy56xf/phase2-track3-2A202600586-Pham_Quang_Huy.git
+cd phase2-track3-2A202600586-Pham_Quang_Huy
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev,openai,ui,sqlite]"
+```
+
+**Windows (PowerShell):**
+
+```powershell
+git clone https://github.com/quanghuy56xf/phase2-track3-2A202600586-Pham_Quang_Huy.git
+cd phase2-track3-2A202600586-Pham_Quang_Huy
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[dev,openai,ui,sqlite]"
+```
+
+Hoặc dùng Make:
+
+```bash
+make install-all
+```
+
+### 2. Cấu hình `.env`
+
+```bash
+cp .env.example .env
+```
+
+Chỉnh file `.env` — ví dụ với **DeepSeek** (OpenAI-compatible):
+
+```env
+OPENAI_API_KEY=sk-your-deepseek-key
+OPENAI_BASE_URL=https://api.deepseek.com
+LLM_MODEL=deepseek-chat
+CHECKPOINTER=memory
+LOG_LEVEL=INFO
+```
+
+Các provider khác:
+
+| Provider | Biến môi trường |
+|---|---|
+| OpenAI | `OPENAI_API_KEY=sk-...` |
+| Anthropic | `ANTHROPIC_API_KEY=sk-ant-...` |
+| Gemini | `GEMINI_API_KEY=AIza...` |
+| DeepSeek | `OPENAI_API_KEY` + `OPENAI_BASE_URL=https://api.deepseek.com` |
+
+> DeepSeek cần `method="function_calling"` cho structured output — đã xử lý sẵn trong `classify_node`.
+
+### 3. Chạy test
+
+```bash
+make test
+# hoặc
+python -m pytest
+```
+
+Kết quả mong đợi: **25/25 passed** (cần API key hợp lệ trong `.env`).
+
+### 4. Chạy scenarios & chấm điểm local
+
+```bash
+make run-scenarios
+make grade-local
+```
+
+Hoặc không dùng Make:
+
+```bash
+python -m langgraph_agent_lab.cli run-scenarios --config configs/lab.yaml --output outputs/metrics.json
+python -m langgraph_agent_lab.cli validate-metrics --metrics outputs/metrics.json
+```
+
+Output:
+- `outputs/metrics.json` — kết quả từng scenario
+- `reports/lab_report.md` — báo cáo tự sinh
+
+### 5. Demo UI (Streamlit)
+
+```bash
+make ui
+```
+
+Hoặc:
+
+```bash
+python -m streamlit run streamlit_app.py
+```
+
+Mở trình duyệt: **http://localhost:8501**
+
+- Chọn scenario mẫu (S01–S07) ở sidebar, hoặc tự nhập câu hỏi
+- Bấm **Chạy agent** → xem route, câu trả lời, audit events
+
+> Chạy `streamlit_app.py` ở thư mục gốc — **không** chạy trực tiếp `src/langgraph_agent_lab/ui.py`.
+
+### 6. Test batch câu khó (tùy chọn)
+
+```bash
+python scripts/run_hard_batch.py
+```
+
+Kết quả lưu tại `outputs/hard_batch_results.json`.
+
+### 7. Slide trình bày
+
+Mở file `docs/lab_slide.html` trong trình duyệt → **F11** full screen → **Space / →** chuyển slide.
+
+### 8. Lint & typecheck (tùy chọn)
+
+```bash
+make lint
+make typecheck
+```
+
+### Xử lý lỗi thường gặp
+
+| Lỗi | Cách xử lý |
+|---|---|
+| `No LLM API key found` | Kiểm tra `.env`, đảm bảo key đúng |
+| `401 Incorrect API key` | Key sai/hết hạn — tạo key mới |
+| `ImportError: relative import` (Streamlit) | Dùng `streamlit run streamlit_app.py` |
+| `This response_format type is unavailable` (DeepSeek) | Đặt `OPENAI_BASE_URL` — code tự dùng function_calling |
+| Test smoke bị skip | Chưa set API key trong `.env` |
+
+---
+
+## Quick start (tóm tắt)
+
+```bash
+pip install -e ".[dev,openai,ui]"
+cp .env.example .env   # chỉnh API key
+make test
+make run-scenarios
+make grade-local
+make ui                # demo Streamlit
+```
 
 ## How you will be graded
 
@@ -118,30 +269,6 @@ The grading script will also test with scenarios you haven't seen.
 
 ---
 
-## Quick start
-
-```bash
-# Option A: conda
-conda activate ai-lab
-pip install -e '.[dev]'
-pip install langchain-openai  # or langchain-anthropic
-
-# Option B: venv
-python -m venv .venv
-source .venv/bin/activate
-pip install -e '.[dev]'
-pip install langchain-openai  # or langchain-anthropic
-
-# Configure LLM
-cp .env.example .env
-# Edit .env — set your API key
-
-# Verify setup
-make test  # some tests will fail until you implement TODOs
-```
-
----
-
 ## Step-by-step workflow
 
 ### Phase 1: State + nodes (0–90 min) — worth 30 points
@@ -203,12 +330,14 @@ Pick one or more:
 
 | Command | What it does |
 |---|---|
-| `make install` | Install project + dev dependencies |
-| `make test` | Run pytest |
+| `make install` | Install project + dev + openai dependencies |
+| `make install-all` | Install dev + openai + ui + sqlite |
+| `make test` | Run pytest (25 tests) |
 | `make lint` | Run ruff linter |
 | `make typecheck` | Run mypy type checker |
 | `make run-scenarios` | Execute all scenarios → `outputs/metrics.json` |
 | `make grade-local` | Validate metrics.json schema |
+| `make ui` | Launch Streamlit demo (`streamlit_app.py`) |
 | `make clean` | Remove caches and generated files |
 
 ---
